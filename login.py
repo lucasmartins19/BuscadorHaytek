@@ -1,13 +1,15 @@
 import PySimpleGUI as sg
 import keyring
+import requests
 
 def iniciar_login():
-    dados = pegar_dados_login()
-    
+    email, senha = pegar_dados_login()
+
     layout = [
         [sg.Text("Insira seu login HayTek", key="texto")],
-        [sg.Input("Email", key="email", justification="c", text_color="grey", size=30)],
-        [sg.Input("Senha", key="password", justification="c", text_color="grey", size=30)],
+        [sg.Input("Email" if email is None else email, key="email", justification="c", text_color="grey", size=30)],
+        [sg.Input("Senha" if senha is None else senha, key="password", password_char="" if senha is None else "*", justification="c", text_color="grey", size=30)],
+        [sg.Text(visible=False, key="erro", text_color="red")],
         [sg.Button("Entrar"), sg.Button("Cancelar")]]
     
     window = sg.Window(title="Login", layout=layout, finalize=True)
@@ -31,13 +33,42 @@ def iniciar_login():
         elif event == "password-foco_saiu" and values['password'] == "":
             window['password'].update(value="Senha", password_char="")
 
+        elif event == "Entrar":
+            if values['email'] not in ("", "Email") and values['password'] not in ("", "Senha"):
+                resultado = validar_login(values['email'], values['password'])
+                if isinstance(resultado, dict):
+                    return resultado
+                else:
+                    window['erro'].update(value=resultado, visible=True)
+
     window.close()
 
 def pegar_dados_login():
     try:
         return keyring.get_password("BuscadorHayTek", 'email'), keyring.get_password("BuscadorHayTek", 'senha')
     except:
-        return None
+        return None, None
     
-    keyring.set_password(service_id, 'email', 'exemplo@email.com')
-keyring.set_password(service_id, 'senha', 'senha_secreta')
+
+def validar_login(email, senha):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"}
+    json = {
+        "email": email,
+        "password": senha}
+
+    try:
+        login = requests.post("https://api.haytek.com.br/api/v1/site-auth-api/legacy/login/validate", headers=headers, json=json).json()
+        if "SUCCESS" in login:
+            keyring.set_password("BuscadorHayTek", 'email', email)
+            keyring.set_password("BuscadorHayTek", 'senha', senha)
+            return {"ID": login['RESULT']['ID'], "TOKEN": login['RESULT']['TOKEN']}
+        
+        elif "statusCode" in login:
+            if login['message'] == "invalid password":
+                return "Senha incorreta."
+            elif login['message'] == "user":
+                return "Usuário não encontrado."
+    except:
+        return "Erro desconhecido."
+
