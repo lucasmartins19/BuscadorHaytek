@@ -3,14 +3,14 @@ import requests
 import PySimpleGUI as sg
 from concurrent.futures import ThreadPoolExecutor
 
-
 def main():
     empresas = usuario.verificar_empresas()
     empresas = [f"{empresa}: {empresas[empresa]['Nome']}" for empresa in empresas]
     usuario.codigo_empresa = empresas[0].split(":")[0]
 
     layout_principal = [
-        [sg.Text("Empresa:"), sg.Combo(values=empresas, default_value=empresas[0], key="empresa", enable_events=True, readonly=True, size=(30))]
+        [sg.Text("Empresa:"), sg.Combo(values=empresas, default_value=empresas[0], key="empresa", enable_events=True, readonly=True, size=(30))],
+        [sg.Table(usuario.extrair_dados_pedidos(), headings = ["Lente", "Nome", "OD ESF.", "OD CIL", "OE ESF", "OE CIL", "AD OD", "AD OE", "PEDIDO", "VALOR"])]
     ]
     window_principal = sg.Window("BuscadorHayTek", layout=layout_principal)
     while True:
@@ -21,9 +21,6 @@ def main():
             usuario.codigo_empresa = values['empresa'].split(":")[0]
 
     window_principal.close()
-
-    print(usuario.extrair_dados_pedidos())
-
 class Usuario:
     def __init__(self, dados_login):
         self.id = dados_login['ID']
@@ -35,7 +32,6 @@ class Usuario:
 
     def requisicoes_get(self, url):
         try:
-            print("OI")
             return requests.get(url, headers=self.headers)
         except:
             return None
@@ -51,17 +47,26 @@ class Usuario:
             return empresas_dict
         return None
     
+    def funcao_auxiliar_requisicao(self, pedido):
+        try:
+            return self.requisicoes_get(f"https://api.haytek.com.br/v1.1/orders/{pedido}/details/PARAPAR").json()['RESULT']['PARAPAR']
+        except:
+            return None
+
     def extrair_dados_pedidos(self):
         pedidos = self.lista_pedidos()
         if pedidos is not None:
-                with ThreadPoolExecutor(max_workers=30) as pool:
-                    pool.map(main, [])
-        
+            with ThreadPoolExecutor(max_workers=10) as pool:
+                # a = [ [pedido['DESCRICAO'], pedido['NOME'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], str(pedido['VALOR'])] for pedido in list(pool.map(self.funcao_auxiliar_requisicao, pedidos))]
+                a =  list(pool.map(self.funcao_auxiliar_requisicao, pedidos))
+                print(a)
+                return a
+   
     def lista_pedidos(self):
         try:
             json = {
                 "id_ini": 0,
-                "id_qtd": 0,
+                "id_qtd": 10,
                 "status": "T",
                 "data_ini": "19000101",
                 "data_fim": "21000101",
