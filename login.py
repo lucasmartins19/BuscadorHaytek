@@ -37,6 +37,7 @@ def iniciar_login():
             if values['email'] not in ("", "Email") and values['password'] not in ("", "Senha"):
                 resultado = validar_login(values['email'], values['password'])
                 if isinstance(resultado, dict):
+                    window.close()
                     return resultado
                 else:
                     window['erro'].update(value=resultado, visible=True)
