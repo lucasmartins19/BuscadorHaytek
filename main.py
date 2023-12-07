@@ -49,18 +49,22 @@ class Usuario:
     
     def funcao_auxiliar_requisicao(self, pedido):
         try:
-            return self.requisicoes_get(f"https://api.haytek.com.br/v1.1/orders/{pedido}/details/PARAPAR").json()['RESULT']['PARAPAR']
+            requisicao = self.requisicoes_get(f"https://api.haytek.com.br/v1.1/orders/{pedido}/details/PARAPAR").json()['RESULT']['PARAPAR']
+            if len(requisicao) > 1:
+                for req in requisicao:
+                    self.pedidos_l.append(req)
+            else:
+                self.pedidos_l.append(requisicao[0])
         except:
             return None
 
     def extrair_dados_pedidos(self):
         pedidos = self.lista_pedidos()
         if pedidos is not None:
+            self.pedidos_l = list()
             with ThreadPoolExecutor(max_workers=10) as pool:
-                # a = [ [pedido['DESCRICAO'], pedido['NOME'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], str(pedido['VALOR'])] for pedido in list(pool.map(self.funcao_auxiliar_requisicao, pedidos))]
-                a =  list(pool.map(self.funcao_auxiliar_requisicao, pedidos))
-                print(a)
-                return a
+                pool.map(self.funcao_auxiliar_requisicao, pedidos)
+            return sorted([[pedido['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), pedido['NOME'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], str(pedido['VALOR'])] for pedido in self.pedidos_l], reverse=True, key=lambda l: l[8])
    
     def lista_pedidos(self):
         try:
