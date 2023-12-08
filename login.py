@@ -59,11 +59,11 @@ def validar_login(email, senha):
         "password": senha}
 
     try:
-        login = requests.post("https://api.haytek.com.br/api/v1/site-auth-api/legacy/login/validate", headers=headers, json=json).json()
-        if "SUCCESS" in login:
+        login = requests.post("https://api.haytek.com.br/api/v1/site-auth-api/user/login", headers=headers, json=json).json()
+        if "token" in login:
             keyring.set_password("BuscadorHayTek", 'email', email)
             keyring.set_password("BuscadorHayTek", 'senha', senha)
-            return {"ID": login['RESULT']['ID'], "TOKEN": login['RESULT']['TOKEN']}
+            return {"ID": login['userId'], "TOKEN": login['token']}
         
         elif "statusCode" in login:
             if login['message'] == "invalid password":

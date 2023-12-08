@@ -10,7 +10,8 @@ def main():
 
     layout_principal = [
         [sg.Text("Empresa:"), sg.Combo(values=empresas, default_value=empresas[0], key="empresa", enable_events=True, readonly=True, size=(30))],
-        [sg.Table(usuario.extrair_dados_pedidos(), headings = ["Lente", "Nome", "OD ESF.", "OD CIL", "OE ESF", "OE CIL", "AD OD", "AD OE", "PEDIDO", "VALOR"])]
+        [sg.Input(size=(20), key="campo_pesquisa"), sg.Button("Pesquisar", key="pesquisar")],
+        [sg.Table(usuario.extrair_dados_pedidos(), key="tabela", headings = ["Lente", "Nome", "OD ESF.", "OD CIL", "OE ESF", "OE CIL", "AD OD", "AD OE", "PEDIDO", "VALOR"])]
     ]
     window_principal = sg.Window("BuscadorHayTek", layout=layout_principal)
     while True:
@@ -19,8 +20,14 @@ def main():
             break
         elif event == "empresa":
             usuario.codigo_empresa = values['empresa'].split(":")[0]
+        elif event == "pesquisar":
+            if values['campo_pesquisa'] == "":
+                window_principal['tabela'].update(values=usuario.pedidos_l_org)
+            else:
+                window_principal['tabela'].update(values=usuario.filtrar_resultados(values['campo_pesquisa']))
 
     window_principal.close()
+
 class Usuario:
     def __init__(self, dados_login):
         self.id = dados_login['ID']
@@ -35,6 +42,9 @@ class Usuario:
             return requests.get(url, headers=self.headers)
         except:
             return None
+
+    def filtrar_resultados(self, termo):
+        return [lista for lista in self.pedidos_l_org for item in lista if termo.lower() in item.lower()]
         
     def verificar_empresas(self):
         requisicao = self.requisicoes_get("https://api.haytek.com.br/api/v1/user/legacy/users/24342/config")
@@ -64,7 +74,8 @@ class Usuario:
             self.pedidos_l = list()
             with ThreadPoolExecutor(max_workers=10) as pool:
                 pool.map(self.funcao_auxiliar_requisicao, pedidos)
-            return sorted([[pedido['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), pedido['NOME'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], str(pedido['VALOR'])] for pedido in self.pedidos_l], reverse=True, key=lambda l: l[8])
+            self.pedidos_l_org = sorted([[pedido['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), pedido['NOME'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], str(pedido['VALOR'])] for pedido in self.pedidos_l], reverse=True, key=lambda l: l[8])
+            return self.pedidos_l_org
    
     def lista_pedidos(self):
         try:
