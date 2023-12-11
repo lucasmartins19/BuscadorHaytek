@@ -1,7 +1,6 @@
 import PySimpleGUI as sg
 import keyring
 import requests
-from main import Usuario
 
 def iniciar_login():
     email, senha = pegar_dados_login()
