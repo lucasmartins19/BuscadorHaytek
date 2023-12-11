@@ -1,6 +1,7 @@
 import PySimpleGUI as sg
 import keyring
 import requests
+from main import Usuario
 
 def iniciar_login():
     email, senha = pegar_dados_login()
@@ -63,6 +64,9 @@ def validar_login(email, senha):
         if "token" in login:
             keyring.set_password("BuscadorHayTek", 'email', email)
             keyring.set_password("BuscadorHayTek", 'senha', senha)
+            keyring.set_password("BuscadorHayTek", 'token', login['userId'])
+            keyring.set_password("BuscadorHayTek", 'userId', login['token'])
+
             return {"ID": login['userId'], "TOKEN": login['token']}
         
         elif "statusCode" in login:
