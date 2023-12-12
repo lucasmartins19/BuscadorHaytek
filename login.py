@@ -49,17 +49,19 @@ def pegar_dados_login():
         return keyring.get_password("BuscadorHayTek", 'email'), keyring.get_password("BuscadorHayTek", 'senha')
     except:
         return None, None
-    
+
 
 def validar_login(email, senha):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"}
-    json = {
-        "email": email,
-        "password": senha}
+
+    if (email, senha) is not (None,None):
+        if (email, senha) == (keyring.get_password("BuscadorHayTek", 'email'), keyring.get_password("BuscadorHayTek", 'senha')):
+            
+            return {"ID": login['userId'], "TOKEN": login['token']}
 
     try:
-        login = requests.post("https://api.haytek.com.br/api/v1/site-auth-api/user/login", headers=headers, json=json).json()
+        login = requests.post("https://api.haytek.com.br/api/v1/site-auth-api/user/login", headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"}, json={"email":email,"password":senha}).json()
         if "token" in login:
             keyring.set_password("BuscadorHayTek", 'email', email)
             keyring.set_password("BuscadorHayTek", 'senha', senha)
