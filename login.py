@@ -50,24 +50,26 @@ def pegar_dados_login():
     except:
         return None, None
 
-
 def validar_login(email, senha):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"}
-
-    if (email, senha) is not (None,None):
+    if (email, senha) != (None,None):
         if (email, senha) == (keyring.get_password("BuscadorHayTek", 'email'), keyring.get_password("BuscadorHayTek", 'senha')):
-            
-            return {"ID": login['userId'], "TOKEN": login['token']}
-
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+                "Token": keyring.get_password("BuscadorHayTek", 'token'),
+                "Iduser": keyring.get_password("BuscadorHayTek", 'userId') }
+            try:
+                validacao_token = requests.get(f"https://api.haytek.com.br/api/v1/user/legacy/users/{headers['Iduser']}/config", headers=headers).json()
+                if "SUCCESS" in validacao_token:
+                    return {"ID": headers['Iduser'], "TOKEN": headers["Token"]}
+            except:
+                pass
     try:
         login = requests.post("https://api.haytek.com.br/api/v1/site-auth-api/user/login", headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"}, json={"email":email,"password":senha}).json()
         if "token" in login:
             keyring.set_password("BuscadorHayTek", 'email', email)
             keyring.set_password("BuscadorHayTek", 'senha', senha)
-            keyring.set_password("BuscadorHayTek", 'token', login['userId'])
-            keyring.set_password("BuscadorHayTek", 'userId', login['token'])
-
+            keyring.set_password("BuscadorHayTek", 'token', login['token'])
+            keyring.set_password("BuscadorHayTek", 'userId', login['userId'])
             return {"ID": login['userId'], "TOKEN": login['token']}
         
         elif "statusCode" in login:

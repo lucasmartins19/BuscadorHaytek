@@ -11,7 +11,8 @@ def main():
     layout_principal = [
         [sg.Text("Empresa:"), sg.Combo(values=empresas, default_value=empresas[0], key="empresa", enable_events=True, readonly=True, size=(30))],
         [sg.Input(size=(20), key="campo_pesquisa"), sg.Button("Pesquisar", key="pesquisar")],
-        [sg.Table(usuario.extrair_dados_pedidos(), key="tabela", headings = ["Lente", "Nome", "OD ESF.", "OD CIL", "OE ESF", "OE CIL", "AD OD", "AD OE", "PEDIDO", "VALOR"])]
+        [sg.Table(usuario.extrair_dados_pedidos(), key="tabela", headings = ["Lente", "Nome", "OS","OD ESF.", "OD CIL", "OE ESF", "OE CIL", "AD OD", "AD OE", "PEDIDO", "VALOR"])],
+        [sg.Text(len(usuario.pedidos_l_org), key="Registros")]
     ]
     window_principal = sg.Window("BuscadorHayTek", layout=layout_principal)
     while True:
@@ -23,8 +24,11 @@ def main():
         elif event == "pesquisar":
             if values['campo_pesquisa'] == "":
                 window_principal['tabela'].update(values=usuario.pedidos_l_org)
+                window_principal['Registros'].update(value=len(usuario.pedidos_l_org))
             else:
-                window_principal['tabela'].update(values=usuario.filtrar_resultados(values['campo_pesquisa']))
+                resultados_filtrados = usuario.filtrar_resultados(values['campo_pesquisa'])
+                window_principal['tabela'].update(values=resultados_filtrados)
+                window_principal['Registros'].update(value=len(resultados_filtrados))
 
     window_principal.close()
 
@@ -74,14 +78,14 @@ class Usuario:
             self.pedidos_l = list()
             with ThreadPoolExecutor(max_workers=10) as pool:
                 pool.map(self.funcao_auxiliar_requisicao, pedidos)
-            self.pedidos_l_org = sorted([[pedido['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), pedido['NOME'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], str(pedido['VALOR'])] for pedido in self.pedidos_l], reverse=True, key=lambda l: l[8])
+            self.pedidos_l_org = sorted([[pedido['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), pedido['NOME'], pedido['OSCLI'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], f"{pedido['VALOR']:.1f}"] for pedido in self.pedidos_l], reverse=True, key=lambda l: int(l[9].strip("MG")))
             return self.pedidos_l_org
    
     def lista_pedidos(self):
         try:
             json = {
                 "id_ini": 0,
-                "id_qtd": 10,
+                "id_qtd": 0,
                 "status": "T",
                 "data_ini": "19000101",
                 "data_fim": "21000101",
