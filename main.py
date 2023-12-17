@@ -45,11 +45,14 @@ def main():
 
             window_principal['tabela'].update(values=dados)
             window_principal['Registros'].update(value=len(dados))
+            if len(dados) > 2:
+                window_principal["tabela"].widget.see(len(dados)-1)
 
         elif event == "carregou":
             window_principal['campo_pesquisa'].update(readonly=False)
             window_principal['pesquisar'].update(disabled=False)
             window_principal['tabela'].update(values=usuario.pedidos_l_org)
+            window_principal["tabela"].widget.see(1)
             window_principal['Registros'].update(value=len(usuario.pedidos_l_org))
             master.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
 
@@ -119,7 +122,8 @@ class Usuario:
             }
             pedidos = requests.post(f"https://api.haytek.com.br/v1.1/orders/history/v2/{self.codigo_empresa}", headers=self.headers, json=json).json()['RESULT']
             return [pedido['Pedhtk'] for pedido in pedidos]
-        except:
+        except Exception as excecao:
+            print(excecao.__class__, excecao)
             return None
 
 if __name__ == "__main__":
