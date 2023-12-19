@@ -16,15 +16,15 @@ def main():
     layout_principal = [
         [sg.Text("Empresa:"), sg.Combo(values=empresas, default_value=empresas[0], key="empresa", enable_events=True, readonly=True, size=(30))],
         [sg.Input(size=(20), key="campo_pesquisa", readonly=True), sg.Button("Pesquisar", key="pesquisar", disabled=True)],
-        [sg.Table([], key="tabela", row_height=20, headings = ["Lente", "Data", "Nome", "OS","OD ESF.", "OD CIL", "OE ESF", "OE CIL", "AD OD", "AD OE", "PEDIDO", "VALOR"])],
-        [sg.Image(data=ring_gray_segments_big, pad=0, key="animacao_dados", visible=True)],
-        [sg.Push(), sg.Text("0", key="Registros", pad=0)]
+        [sg.Table([], key="tabela", select_mode="browse", row_height=20, headings = ["Data", "Lente", "Nome", "OS","OD ESF.", "OD CIL", "OE ESF", "OE CIL", "AD OD", "AD OE", "PEDIDO", "VALOR"], auto_size_columns=False, col_widths=[8,25,5,5,6,6,6,6,6,6,10,7])],
+        [sg.Image(data=ring_gray_segments_big, pad=0, key="animacao_dados", visible=False)],
+        [sg.Push(), sg.Text("0", key="Registros", pad=0)],
+        [sg.Button("Baixar dados", key="download_dados")]
     ]
     window_principal = sg.Window("BuscadorHayTek", layout=layout_principal, finalize=True)
-
-    threading.Thread(target=lambda: usuario.extrair_dados_pedidos(window_principal), daemon=True).start()
-    master = window_principal['animacao_dados'].widget.master
-    master.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+    botao_download = window_principal['download_dados'].widget.master
+    gif_carregando = window_principal['animacao_dados'].widget.master
+    botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
 
     while True:
         event, values = window_principal.read(timeout=100)
@@ -32,6 +32,12 @@ def main():
             break
         elif event == "empresa":
             usuario.codigo_empresa = values['empresa'].split(":")[0]
+            gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+            botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+            window_principal['tabela'].update(values=[])
+            dados=[]
+            usuario.pedidos_l_org=[]
+
         elif event == "pesquisar":
             if values['campo_pesquisa'] == "":
                 window_principal['tabela'].update(values=usuario.pedidos_l_org)
@@ -43,19 +49,32 @@ def main():
 
         elif event == "carregando":
             dados.append(values['carregando'])
-
+            window_principal['empresa'].update(disabled=True)
             window_principal['tabela'].update(values=dados)
             window_principal['Registros'].update(value=len(dados))
             if len(dados) > 2:
                 window_principal["tabela"].widget.see(len(dados)-1)
 
         elif event == "carregou":
+            window_principal['empresa'].update(disabled=False)
             window_principal['campo_pesquisa'].update(readonly=False)
             window_principal['pesquisar'].update(disabled=False)
             window_principal['tabela'].update(values=usuario.pedidos_l_org)
-            window_principal["tabela"].widget.see(1)
             window_principal['Registros'].update(value=len(usuario.pedidos_l_org))
-            master.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+            gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+            try:
+                window_principal["tabela"].widget.see(1)
+            except sg.ttk.tkinter.TclError:
+                pass
+
+        elif event == "download_dados":
+            threading.Thread(target=lambda: usuario.extrair_dados_pedidos(window_principal), daemon=True).start()
+            window_principal['campo_pesquisa'].update(readonly=True)
+            window_principal['pesquisar'].update(disabled=True)
+            botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+            window_principal['animacao_dados'].update(visible=True)
+            gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+
 
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
 
@@ -94,10 +113,10 @@ class Usuario:
             if len(requisicao) > 1:
                 for req in requisicao:
                     self.pedidos_l.append(req)
-                    self.window_principal.write_event_value("carregando", [req['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), self.pedidos[req['PEDIDO']], req['NOME'], req['OSCLI'], req['DIR_ESFER'], req['DIR_CIL'], req['ESQ_ESFER'], req['ESQ_CIL'], req['DIR_ADD'], req['ESQ_ADD'], req['PEDIDO'], locale.currency(req['VALOR'], grouping=True)])
+                    self.window_principal.write_event_value("carregando", [self.pedidos[req['PEDIDO']], req['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), req['NOME'], req['OSCLI'], req['DIR_ESFER'], req['DIR_CIL'], req['ESQ_ESFER'], req['ESQ_CIL'], req['DIR_ADD'], req['ESQ_ADD'], req['PEDIDO'], locale.currency(req['VALOR'], grouping=True)])
             else:
                 self.pedidos_l.append(requisicao[0])
-                self.window_principal.write_event_value("carregando", [requisicao[0]['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), self.pedidos[requisicao[0]['PEDIDO']], requisicao[0]['NOME'], requisicao[0]['OSCLI'], requisicao[0]['DIR_ESFER'], requisicao[0]['DIR_CIL'], requisicao[0]['ESQ_ESFER'], requisicao[0]['ESQ_CIL'], requisicao[0]['DIR_ADD'], requisicao[0]['ESQ_ADD'], requisicao[0]['PEDIDO'], locale.currency(requisicao[0]['VALOR'], grouping=True)])
+                self.window_principal.write_event_value("carregando", [self.pedidos[requisicao[0]['PEDIDO']], requisicao[0]['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), requisicao[0]['NOME'], requisicao[0]['OSCLI'], requisicao[0]['DIR_ESFER'], requisicao[0]['DIR_CIL'], requisicao[0]['ESQ_ESFER'], requisicao[0]['ESQ_CIL'], requisicao[0]['DIR_ADD'], requisicao[0]['ESQ_ADD'], requisicao[0]['PEDIDO'], locale.currency(requisicao[0]['VALOR'], grouping=True)])
         except:
             return self.funcao_auxiliar_requisicao(pedido)
 
@@ -108,7 +127,7 @@ class Usuario:
             self.pedidos_l = list()
             with ThreadPoolExecutor(max_workers=10) as pool:
                 pool.map(self.funcao_auxiliar_requisicao, [pedido for pedido in self.pedidos])
-            self.pedidos_l_org = sorted([[pedido['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), self.pedidos[pedido['PEDIDO']], pedido['NOME'], pedido['OSCLI'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], locale.currency(pedido['VALOR'], grouping=True)] for pedido in self.pedidos_l], reverse=True, key=lambda l: int(l[10].strip("MG")))
+            self.pedidos_l_org = sorted([[self.pedidos[pedido['PEDIDO']], pedido['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), pedido['NOME'], pedido['OSCLI'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], locale.currency(pedido['VALOR'], grouping=True)] for pedido in self.pedidos_l], reverse=True, key=lambda l: int(l[10].strip("MG")))
             self.window_principal.write_event_value("carregou", '')
 
     def lista_pedidos(self):
@@ -122,7 +141,6 @@ class Usuario:
                 "companies": [self.codigo_empresa]
             }
             pedidos = requests.post(f"https://api.haytek.com.br/v1.1/orders/history/v2/{self.codigo_empresa}", headers=self.headers, json=json).json()['RESULT']
-            # return [[pedido['Pedhtk'], datetime.strptime(pedido['Data_pedido'], '%Y-%m-%d').strftime('%d/%m/%Y') ] for pedido in pedidos]
             return { pedido['Pedhtk']: datetime.strptime(pedido['Data_pedido'], '%Y-%m-%d').strftime('%d/%m/%Y') for pedido in pedidos}
         
         except Exception as excecao:
