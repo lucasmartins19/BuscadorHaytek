@@ -29,13 +29,14 @@ def main():
     window_principal['campo_pesquisa'].bind("<Return>", "-enter")
     while True:
         event, values = window_principal.read(timeout=100)
-        if event != "__TIMEOUT__":
-            print(event)
+        # if event != "__TIMEOUT__":
+        #     print(event)
 
         if event == sg.WINDOW_CLOSED:
             break
         elif event == "empresa":
             if usuario.codigo_empresa != values['empresa'].split(":")[0]:
+                window_principal['download_dados'].update(text="Baixar dados")
                 usuario.codigo_empresa = values['empresa'].split(":")[0]
                 window_principal['Registros'].update(value=0)
                 gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
@@ -61,6 +62,7 @@ def main():
                 window_principal["tabela"].widget.see(len(dados)-1)
 
         elif event == "carregou":
+            
             window_principal['empresa'].update(disabled=False)
             window_principal['campo_pesquisa'].update(readonly=False)
             window_principal['pesquisar'].update(disabled=False)
@@ -73,6 +75,7 @@ def main():
                 pass
 
         elif event == "download_dados":
+            window_principal['download_dados'].update(text="Baixar dados")
             window_principal['empresa'].update(disabled=True)
             window_principal['campo_pesquisa'].update(readonly=True)
             window_principal['pesquisar'].update(disabled=True)
@@ -81,6 +84,10 @@ def main():
             window_principal['animacao_dados'].update(visible=True)
             gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
 
+        elif event == "falhou":
+            gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+            botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+            window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
 
@@ -135,6 +142,9 @@ class Usuario:
                 pool.map(self.funcao_auxiliar_requisicao, [pedido for pedido in self.pedidos])
             self.pedidos_l_org = sorted([[self.pedidos[pedido['PEDIDO']], pedido['DESCRICAO'].strip("Lente Haytek Visão Simples Acabada"), pedido['NOME'], pedido['OSCLI'], pedido['DIR_ESFER'], pedido['DIR_CIL'], pedido['ESQ_ESFER'], pedido['ESQ_CIL'], pedido['DIR_ADD'], pedido['ESQ_ADD'], pedido['PEDIDO'], locale.currency(pedido['VALOR'], grouping=True)] for pedido in self.pedidos_l], reverse=True, key=lambda l: int(l[10].strip("MG")))
             self.window_principal.write_event_value("carregou", '')
+
+        else:
+            self.window_principal.write_event_value("falhou", '')
 
     def lista_pedidos(self):
         try:
