@@ -7,6 +7,31 @@ import locale
 from datetime import datetime
 
 def main():
+    def mover_elemento(elemento, direcao):
+        if elemento == "gif":
+            if direcao == "dentro":
+                gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+            elif direcao == "fora":
+                gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+
+        elif elemento == "download":
+            if direcao == "dentro":
+                botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+            elif direcao == "fora":
+                botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+
+    def procedimento_carregamento():
+        estado = window_principal['empresa'].widget['state']
+        if estado == "readonly":
+            print("AQUI")
+            window_principal['empresa'].update(disabled=True)
+            window_principal['campo_pesquisa'].update(readonly=True)
+            window_principal['pesquisar'].update(disabled=True)
+        else:
+            window_principal['empresa'].update(disabled=False)
+            window_principal['campo_pesquisa'].update(readonly=False)
+            window_principal['pesquisar'].update(disabled=False)
+
     empresas = usuario.verificar_empresas()
     dados = list()
     empresas = [f"{empresa}: {empresas[empresa]['Nome']}" for empresa in empresas]
@@ -31,7 +56,6 @@ def main():
         event, values = window_principal.read(timeout=100)
         # if event != "__TIMEOUT__":
         #     print(event)
-
         if event == sg.WINDOW_CLOSED:
             break
         elif event == "empresa":
@@ -39,8 +63,8 @@ def main():
                 window_principal['download_dados'].update(text="Baixar dados")
                 usuario.codigo_empresa = values['empresa'].split(":")[0]
                 window_principal['Registros'].update(value=0)
-                gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
-                botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+                mover_elemento("gif", "fora")
+                mover_elemento("download", "dentro")
                 window_principal['tabela'].update(values=[])
                 dados=[]
                 usuario.pedidos_l_org=[]
@@ -62,31 +86,34 @@ def main():
                 window_principal["tabela"].widget.see(len(dados)-1)
 
         elif event == "carregou":
-            
-            window_principal['empresa'].update(disabled=False)
-            window_principal['campo_pesquisa'].update(readonly=False)
-            window_principal['pesquisar'].update(disabled=False)
+            procedimento_carregamento()            
+            # window_principal['empresa'].update(disabled=False)
+            # window_principal['campo_pesquisa'].update(readonly=False)
+            # window_principal['pesquisar'].update(disabled=False)
             window_principal['tabela'].update(values=usuario.pedidos_l_org)
             window_principal['Registros'].update(value=len(usuario.pedidos_l_org))
-            gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+            mover_elemento("gif", "fora")
+
             try:
                 window_principal["tabela"].widget.see(1)
             except sg.ttk.tkinter.TclError:
                 pass
 
         elif event == "download_dados":
+            # print(window_principal['empresa'].widget['state'])
+            procedimento_carregamento()
             window_principal['download_dados'].update(text="Baixar dados")
-            window_principal['empresa'].update(disabled=True)
-            window_principal['campo_pesquisa'].update(readonly=True)
-            window_principal['pesquisar'].update(disabled=True)
+            # window_principal['empresa'].update(disabled=True)
+            # window_principal['campo_pesquisa'].update(readonly=True)
+            # window_principal['pesquisar'].update(disabled=True)
             threading.Thread(target=lambda: usuario.extrair_dados_pedidos(window_principal), daemon=True).start()
-            botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
+            mover_elemento("download", "fora")
             window_principal['animacao_dados'].update(visible=True)
-            gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+            mover_elemento("gif", "dentro")
 
         elif event == "falhou":
-            gif_carregando.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
-            botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
+            mover_elemento("gif", "fora")
+            mover_elemento("download", "dentro")
             window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
@@ -150,7 +177,7 @@ class Usuario:
         try:
             json = {
                 "id_ini": 0,
-                "id_qtd": 0,
+                "id_qtd": 10,
                 "status": "T",
                 "data_ini": "19000101",
                 "data_fim": "21000101",
