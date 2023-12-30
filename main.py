@@ -20,17 +20,17 @@ def main():
             elif direcao == "fora":
                 botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=2, rely=2, bordermode=sg.tk.OUTSIDE)
 
-    def procedimento_carregamento():
-        estado = window_principal['empresa'].widget['state']
-        if estado == "readonly":
-            print("AQUI")
-            window_principal['empresa'].update(disabled=True)
+    def procedimento_carregamento(comando, empresa=False, falha=False):
+        if comando == "desativar":
+            if not empresa:
+                window_principal['empresa'].update(disabled=True)
             window_principal['campo_pesquisa'].update(readonly=True)
             window_principal['pesquisar'].update(disabled=True)
-        else:
+        elif comando == "reativar":
+            if not falha:
+                window_principal['campo_pesquisa'].update(readonly=False)
+                window_principal['pesquisar'].update(disabled=False)
             window_principal['empresa'].update(disabled=False)
-            window_principal['campo_pesquisa'].update(readonly=False)
-            window_principal['pesquisar'].update(disabled=False)
 
     empresas = usuario.verificar_empresas()
     dados = list()
@@ -56,15 +56,17 @@ def main():
         event, values = window_principal.read(timeout=100)
         # if event != "__TIMEOUT__":
         #     print(event)
+        
         if event == sg.WINDOW_CLOSED:
             break
         elif event == "empresa":
             if usuario.codigo_empresa != values['empresa'].split(":")[0]:
+                mover_elemento("gif", "fora")
+                mover_elemento("download", "dentro")
+                procedimento_carregamento("desativar", empresa=True)
                 window_principal['download_dados'].update(text="Baixar dados")
                 usuario.codigo_empresa = values['empresa'].split(":")[0]
                 window_principal['Registros'].update(value=0)
-                mover_elemento("gif", "fora")
-                mover_elemento("download", "dentro")
                 window_principal['tabela'].update(values=[])
                 dados=[]
                 usuario.pedidos_l_org=[]
@@ -86,34 +88,30 @@ def main():
                 window_principal["tabela"].widget.see(len(dados)-1)
 
         elif event == "carregou":
-            procedimento_carregamento()            
-            # window_principal['empresa'].update(disabled=False)
-            # window_principal['campo_pesquisa'].update(readonly=False)
-            # window_principal['pesquisar'].update(disabled=False)
-            window_principal['tabela'].update(values=usuario.pedidos_l_org)
-            window_principal['Registros'].update(value=len(usuario.pedidos_l_org))
+            procedimento_carregamento("reativar")            
             mover_elemento("gif", "fora")
-
+            window_principal['tabela'].update(values=usuario.pedidos_l_org)
+            quantidade_registros = len(usuario.pedidos_l_org)
+            window_principal['Registros'].update(value=quantidade_registros)
+            if quantidade_registros == 0:
+                procedimento_carregamento("desativar", empresa=True)
             try:
                 window_principal["tabela"].widget.see(1)
             except sg.ttk.tkinter.TclError:
                 pass
 
         elif event == "download_dados":
-            # print(window_principal['empresa'].widget['state'])
-            procedimento_carregamento()
-            window_principal['download_dados'].update(text="Baixar dados")
-            # window_principal['empresa'].update(disabled=True)
-            # window_principal['campo_pesquisa'].update(readonly=True)
-            # window_principal['pesquisar'].update(disabled=True)
             threading.Thread(target=lambda: usuario.extrair_dados_pedidos(window_principal), daemon=True).start()
+            procedimento_carregamento("desativar")
             mover_elemento("download", "fora")
-            window_principal['animacao_dados'].update(visible=True)
             mover_elemento("gif", "dentro")
+            window_principal['download_dados'].update(text="Baixar dados")
+            window_principal['animacao_dados'].update(visible=True)
 
         elif event == "falhou":
             mover_elemento("gif", "fora")
             mover_elemento("download", "dentro")
+            procedimento_carregamento("reativar", falha=True)            
             window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
