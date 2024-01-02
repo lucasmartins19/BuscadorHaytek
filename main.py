@@ -139,7 +139,7 @@ def main():
             window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         elif event == "buscar":
-            usuario.verificar_dioptria()
+            usuario.verificar_dioptria({"O.D.": {"esf": 0.00, "cil": -1.00}, "O.E.": {"esf": -2.00, "cil": 0.00}})
 
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
 
@@ -151,6 +151,7 @@ class Usuario:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
         "Token": dados_login['TOKEN'],
         "Iduser": str(dados_login['ID'])}
+        self.grades = None
 
     def requisicoes_get(self, url):
         try:
@@ -209,7 +210,7 @@ class Usuario:
                 "companies": [self.codigo_empresa]
             }
             pedidos = requests.post(f"https://api.haytek.com.br/v1.1/orders/history/v2/{self.codigo_empresa}", headers=self.headers, json=json).json()['RESULT']
-            return { pedido['Pedhtk']: datetime.strptime(pedido['Data_pedido'], '%Y-%m-%d').strftime('%d/%m/%Y') for pedido in pedidos}
+            return {pedido['Pedhtk']: datetime.strptime(pedido['Data_pedido'], '%Y-%m-%d').strftime('%d/%m/%Y') for pedido in pedidos}
         
         except Exception as excecao:
             print(excecao.__class__, excecao)
@@ -218,12 +219,22 @@ class Usuario:
     def lista_lentes(self):
         return [lente['PRODUTO'] for lente in self.requisicoes_get(f"https://api.haytek.com.br/v1.1/client/{self.codigo_empresa}/users/{self.headers['Iduser']}/dashboard").json()['LENS'] if "Visão Simples Acabada" in lente['GROUP_DESCRICAO']]
 
-    def verificar_dioptria(self):
-        self.pegar_grades(self.lista_lentes())
+    def verificar_dioptria(self, dioptria):
+        if self.grades is None:
+            self.grades = self.pegar_grades(self.lista_lentes())
+
+        for chave, grade in self.grades.items():
+            for diametro in grade:
+                esf_ini, esf_fin = diametro['MEDIDA1'].split(" a ")
+                cil_ini, cil_fin = diametro['MEDIDA2'].split(" a ")
+                if "O.D." in dioptria:
+                    if dioptria['O.D.']['esf'] 
+
+                
+
 
     def pegar_grades(self, lentes):
-            print( {lente: self.requisicoes_get(f"https://api.haytek.com.br/v1.1/lens/{lente}/diametro").json()['RESULT'] for lente in lentes} )
-
+        return {lente: self.requisicoes_get(f"https://api.haytek.com.br/v1.1/lens/{lente}/diametro").json()['RESULT'] for lente in lentes}
 
 
 if __name__ == "__main__":
