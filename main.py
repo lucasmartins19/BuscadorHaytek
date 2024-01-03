@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 import locale
 from datetime import datetime
+import re
 
 def main():
     def mover_elemento(elemento, direcao):
@@ -225,13 +226,9 @@ class Usuario:
 
         for chave, grade in self.grades.items():
             for diametro in grade:
-                esf_ini, esf_fin = diametro['MEDIDA1'].split(" a ")
-                cil_ini, cil_fin = diametro['MEDIDA2'].split(" a ")
-                if "O.D." in dioptria:
-                    if dioptria['O.D.']['esf'] 
-
+                esf= re.search(r"([+-.0-9]+)[ aA ]*([+-.0-9]*)", diametro['MEDIDA1']).groups()
+                cil = re.search(r"([+-.0-9]+)[ aA ]*([+-.0-9]*)", diametro['MEDIDA2']).groups()
                 
-
 
     def pegar_grades(self, lentes):
         return {lente: self.requisicoes_get(f"https://api.haytek.com.br/v1.1/lens/{lente}/diametro").json()['RESULT'] for lente in lentes}
