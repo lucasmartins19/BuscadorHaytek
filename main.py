@@ -140,7 +140,7 @@ def main():
             window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         elif event == "buscar":
-            usuario.verificar_dioptria({"O.D.": {"esf": 0.00, "cil": -1.00}, "O.E.": {"esf": -2.00, "cil": 0.00}})
+            usuario.verificar_dioptria({"O.D.": {"esf": 0.25, "cil": -1.00}, "O.E.": {"esf": -2.00, "cil": 0.00}})
 
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
 
@@ -223,12 +223,25 @@ class Usuario:
     def verificar_dioptria(self, dioptria):
         if self.grades is None:
             self.grades = self.pegar_grades(self.lista_lentes())
-
-        for chave, grade in self.grades.items():
+        disponibilidade = dict()
+        for chave_grade, grade in self.grades.items():
             for diametro in grade:
-                esf= re.search(r"([+-.0-9]+)[ aA ]*([+-.0-9]*)", diametro['MEDIDA1']).groups()
-                cil = re.search(r"([+-.0-9]+)[ aA ]*([+-.0-9]*)", diametro['MEDIDA2']).groups()
-                
+                esf = list(re.search(r"([+-.0-9]+)[ aA ]*([+-.0-9]*)", diametro['MEDIDA1']).groups())
+                cil = list(re.search(r"([+-.0-9]+)[ aA ]*([+-.0-9]*)", diametro['MEDIDA2']).groups())
+                if "" in esf:
+                    esf[1] = esf[0]
+                if "" in cil:
+                    cil[1] = cil[0]
+                if diametro['TIPO'] == "Negativa":
+                    esf[0], esf[1] = esf[1], esf[0]
+                cil[0], cil[1] = cil[1], cil[0]
+
+                for chave_dioptria, grau in dioptria.items():
+                    if float(esf[0]) <= grau['esf'] <= float(esf[1]) and float(cil[0]) <= grau['cil'] <= float(cil[1]):
+                        if not chave_grade in disponibilidade:
+                            disponibilidade[chave_grade] = {}
+                        disponibilidade[chave_grade][chave_dioptria] = True
+        return disponibilidade
 
     def pegar_grades(self, lentes):
         return {lente: self.requisicoes_get(f"https://api.haytek.com.br/v1.1/lens/{lente}/diametro").json()['RESULT'] for lente in lentes}
