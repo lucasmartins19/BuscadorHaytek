@@ -6,6 +6,8 @@ import threading
 import locale
 from datetime import datetime
 import re
+import io
+from PIL import Image
 
 def main():
     def mover_elemento(elemento, direcao):
@@ -67,7 +69,7 @@ def main():
         ]
 
     layout_final = [
-        [sg.TabGroup(tabs, border_width=0, pad=0)]
+        [sg.TabGroup(tabs, border_width=0, pad=0, enable_events=True, key="tab")]
         ]
 
     window_principal = sg.Window("BuscadorHayTek", layout=layout_final, finalize=True)
@@ -80,7 +82,7 @@ def main():
     while True:
         event, values = window_principal.read(timeout=100)
         # if event != "__TIMEOUT__":
-        #     print(event)
+        #     print(event, values)
         
         if event == sg.WINDOW_CLOSED:
             break
@@ -140,10 +142,18 @@ def main():
             window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         elif event == "buscar":
-            usuario.verificar_dioptria({"O.D.": {"esf": 0.25, "cil": -1.00}, "O.E.": {"esf": -2.00, "cil": 0.00}})
+            disponibilidade = usuario.verificar_dioptria({"O.D.": {"esf": 0.25, "cil": -1.00}, "O.E.": {"esf": -2.00, "cil": 0.00}})
+            threading.Thread(target=lambda: usuario.dados_lentes_disponiveis(window_principal, disponibilidade), daemon=True).start()
 
+        elif event == "dados_lente":
+            window_principal['coluna_resultados'].update(visible=True)
+            window_principal.extend_layout(window_principal['coluna_resultados'], [[sg.Image(values['dados_lente'][0])]] )
+            window_principal['coluna_resultados'].contents_changed()
+
+        elif event == "tab" and values['tab'] == "tab_pedidos" and usuario.lista_lentes is None:
+            threading.Thread(target=usuario.pegar_lentes, daemon=True).start()
+    
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
-
     window_principal.close()
 
 class Usuario:
@@ -217,12 +227,12 @@ class Usuario:
             print(excecao.__class__, excecao)
             return None
         
-    def lista_lentes(self):
-        return [lente['PRODUTO'] for lente in self.requisicoes_get(f"https://api.haytek.com.br/v1.1/client/{self.codigo_empresa}/users/{self.headers['Iduser']}/dashboard").json()['LENS'] if "Visão Simples Acabada" in lente['GROUP_DESCRICAO']]
+    def pegar_lentes(self):
+        self.lista_lentes = [lente['PRODUTO'] for lente in self.requisicoes_get(f"https://api.haytek.com.br/v1.1/client/{self.codigo_empresa}/users/{self.headers['Iduser']}/dashboard").json()['LENS'] if "Visão Simples Acabada" in lente['GROUP_DESCRICAO']]
 
     def verificar_dioptria(self, dioptria):
         if self.grades is None:
-            self.grades = self.pegar_grades(self.lista_lentes())
+            self.grades = self.pegar_grades(self.lista_lentes)
         disponibilidade = dict()
         for chave_grade, grade in self.grades.items():
             for diametro in grade:
@@ -242,6 +252,14 @@ class Usuario:
                             disponibilidade[chave_grade] = {}
                         disponibilidade[chave_grade][chave_dioptria] = True
         return disponibilidade
+    
+    def dados_lentes_disponiveis(self, window, disponibilidade):
+        for chave, olhos in disponibilidade.items():
+            imagem = self.requisicoes_get(f"https://repositorio.lenteshaytek.com.br/{chave}.jpg").content
+            imagem_pil = Image.open(io.BytesIO(imagem)).resize((150,150))
+            formato = io.BytesIO()
+            imagem_pil.save(formato, format="PNG")
+            window.write_event_value("dados_lente", [formato.getvalue(), " ".join([olho for olho in olhos])])
 
     def pegar_grades(self, lentes):
         return {lente: self.requisicoes_get(f"https://api.haytek.com.br/v1.1/lens/{lente}/diametro").json()['RESULT'] for lente in lentes}
