@@ -6,6 +6,7 @@ import threading
 import locale
 from datetime import datetime
 import re
+from concurrent.futures import ThreadPoolExecutor
 import io
 from PIL import Image
 
@@ -35,6 +36,15 @@ def main():
                 window_principal['pesquisar'].update(disabled=False)
             window_principal['empresa'].update(disabled=False)
 
+    def distribuir_lista_imagens(lista_lentes_disponiveis):
+        lista_lentes_disponiveis = [sg.Image(lente) for lente in lista_lentes_disponiveis.values()]
+        calculo = int(window_principal['coluna_resultados'].get_size()[0] / 150)
+        listas = []
+        for i in range(0, len(lista_lentes_disponiveis), calculo):
+            sublista = lista_lentes_disponiveis[i:i+calculo]
+            listas.append(sublista)
+        return listas
+
     empresas = usuario.verificar_empresas()
     dados = list()
     empresas = [f"{empresa}: {empresas[empresa]['Nome']}" for empresa in empresas]
@@ -53,15 +63,13 @@ def main():
         [sg.Frame(title="", key="teste", layout=[[sg.Push(), sg.Text(size=3), sg.Text("ESFÉRICO"), sg.Text("CILÍNDRICO"), sg.Push()],
         [sg.Push(), sg.Text("O.D."), sg.Input(size=10, justification="c", key="ode"), sg.Input(size=10, justification="c", key="odc"), sg.Push()],
         [sg.Push(), sg.Text("O.E."), sg.Input(size=10, justification="c", key="oee"), sg.Input(size=10, justification="c", key="oec"), sg.Push()],
-        [sg.Push(), sg.Button("Buscar", key="buscar"), sg.Push()]])]
+        [sg.Push(), sg.Button("Buscar", key="buscar", disabled=True), sg.Push()]])]
         ]
-    coluna_lentes_resultados = [
-        []
-    ]
+    coluna_lentes_resultados = [[]]
 
     layout_lentes = [
         [sg.Push(), sg.Column(coluna_lentes_grau), sg.Push()],
-        [sg.Column(layout=coluna_lentes_resultados, scrollable=True, vertical_scroll_only=True, expand_x=True, expand_y=True, visible=False, key="coluna_resultados")]
+        [sg.Column(layout=coluna_lentes_resultados, scrollable=True, vertical_scroll_only=True, expand_x=True, expand_y=True, visible=True, key="coluna_resultados")]
     ]
 
     tabs = [
@@ -69,11 +77,11 @@ def main():
         ]
 
     layout_final = [
-        [sg.TabGroup(tabs, border_width=0, pad=0, enable_events=True, key="tab")]
+        [sg.TabGroup(tabs, border_width=0, pad=0)]
         ]
 
     window_principal = sg.Window("BuscadorHayTek", layout=layout_final, finalize=True)
-
+    window_principal.start_thread(usuario.imagens_lentes_disponiveis, "lentes_disponiveis")
     botao_download = window_principal['download_dados'].widget.master
     gif_carregando = window_principal['animacao_dados'].widget.master
     botao_download.place(in_=window_principal['tabela'].widget, anchor="center", relx=0.5, rely=0.5, bordermode=sg.tk.OUTSIDE)
@@ -150,9 +158,12 @@ def main():
             window_principal.extend_layout(window_principal['coluna_resultados'], [[sg.Image(values['dados_lente'][0])]] )
             window_principal['coluna_resultados'].contents_changed()
 
-        elif event == "tab" and values['tab'] == "tab_pedidos" and usuario.lista_lentes is None:
-            threading.Thread(target=usuario.pegar_lentes, daemon=True).start()
-    
+        elif event == "lentes_disponiveis":
+            window_principal['buscar'].update(disabled=False)
+            window_principal.extend_layout(window_principal['coluna_resultados'], distribuir_lista_imagens(values['lentes_disponiveis']))
+            window_principal.visibility_changed()
+            window_principal['coluna_resultados'].contents_changed()
+
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
     window_principal.close()
 
@@ -252,14 +263,17 @@ class Usuario:
                             disponibilidade[chave_grade] = {}
                         disponibilidade[chave_grade][chave_dioptria] = True
         return disponibilidade
-    
-    def dados_lentes_disponiveis(self, window, disponibilidade):
-        for chave, olhos in disponibilidade.items():
-            imagem = self.requisicoes_get(f"https://repositorio.lenteshaytek.com.br/{chave}.jpg").content
+
+    def imagens_lentes_disponiveis(self):
+        imagens_lentes = dict()
+        self.pegar_lentes()
+        for lente in self.lista_lentes:
+            imagem = self.requisicoes_get(f"https://repositorio.lenteshaytek.com.br/{lente}.jpg").content
             imagem_pil = Image.open(io.BytesIO(imagem)).resize((150,150))
             formato = io.BytesIO()
             imagem_pil.save(formato, format="PNG")
-            window.write_event_value("dados_lente", [formato.getvalue(), " ".join([olho for olho in olhos])])
+            imagens_lentes[lente] = formato.getvalue()
+        return imagens_lentes
 
     def pegar_grades(self, lentes):
         return {lente: self.requisicoes_get(f"https://api.haytek.com.br/v1.1/lens/{lente}/diametro").json()['RESULT'] for lente in lentes}
