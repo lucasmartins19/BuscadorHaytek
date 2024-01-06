@@ -54,7 +54,7 @@ def main():
         [sg.Push(), sg.Text("O.E."), sg.Input(size=10, justification="c", key="oee"), sg.Input(size=10, justification="c", key="oec"), sg.Push()],
         [sg.Push(), sg.Button("Buscar", key="buscar"), sg.Push()]])]
         ]
-    coluna_lentes_resultados = [[sg.Table(values=[], headings=["Lente", "Disponibilidade"], auto_size_columns=False, key="tabela_lentes", num_rows=15, cols_justification=['l', 'r'], col_widths=[45,10])]]
+    coluna_lentes_resultados = [[sg.Table(values=[], headings=["Order", "Lente", "Disponibilidade"], visible_column_map=[False, True, True], auto_size_columns=False, key="tabela_lentes", num_rows=15, cols_justification=["c", 'l', 'r'], col_widths=[0,45,10])]]
 
     layout_lentes = [
         [sg.Push(), sg.Column(coluna_lentes_grau), sg.Column(coluna_lentes_resultados), sg.Push()],
@@ -137,13 +137,13 @@ def main():
             window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         elif event == "buscar":
-            threading.Thread(target=lambda: usuario.verificar_dioptria(window_principal, {"O.D.": {"esf": 0.25, "cil": -1.00}, "O.E.": {"esf": -2.00, "cil": 0.00}}), daemon=True).start()
+            threading.Thread(target=lambda: usuario.verificar_dioptria(window_principal, {"O.D.": {"esf": float(values['ode']), "cil": float(values['odc'])}, "O.E.": {"esf": float(values['oee']), "cil": float(values['oec'])}}), daemon=True).start()
             # disponibilidade = usuario.verificar_dioptria({"O.D.": {"esf": 0.25, "cil": -1.00}, "O.E.": {"esf": -2.00, "cil": 0.00}})
             # print(disponibilidade)
             # threading.Thread(target=lambda: usuario.dados_lentes_disponiveis(window_principal, disponibilidade), daemon=True).start()
 
         elif event == "dados_lentes":
-            window_principal['tabela_lentes'].update(values=[[usuario.lista_lentes[lente], " ".join([disp for disp in disponibilidade])] for lente, disponibilidade in values['dados_lentes'].items()])
+            window_principal['tabela_lentes'].update(values=sorted([[usuario.lista_lentes[lente]['order'], usuario.lista_lentes[lente]['nome_lente'], " ".join([disp for disp in disponibilidade])] for lente, disponibilidade in values['dados_lentes'].items()], key=lambda l: l[0]))
 
         window_principal['animacao_dados'].update_animation(ring_gray_segments_big, time_between_frames=100)
     window_principal.close()
@@ -221,7 +221,8 @@ class Usuario:
             return None
         
     def pegar_lentes(self):
-        self.lista_lentes = {lente['PRODUTO']: lente['LENS_NAME'].strip("Lente Haytek Visão Simples Acabada") for lente in self.requisicoes_get(f"https://api.haytek.com.br/v1.1/client/{self.codigo_empresa}/users/{self.headers['Iduser']}/dashboard").json()['LENS'] if "Visão Simples Acabada" in lente['GROUP_DESCRICAO']}
+        # self.lista_lentes = {lente['PRODUTO']: lente['LENS_NAME'].strip("Lente Haytek Visão Simples Acabada") for lente in self.requisicoes_get(f"https://api.haytek.com.br/v1.1/client/{self.codigo_empresa}/users/{self.headers['Iduser']}/dashboard").json()['LENS'] if "Visão Simples Acabada" in lente['GROUP_DESCRICAO']}
+        self.lista_lentes = {lente['PRODUTO']: {"nome_lente": lente['LENS_NAME'].strip("Lente Haytek Visão Simples Acabada"), "order": lente['ORDER_BY']} for lente in self.requisicoes_get(f"https://api.haytek.com.br/v1.1/client/{self.codigo_empresa}/users/{self.headers['Iduser']}/dashboard").json()['LENS'] if "Visão Simples Acabada" in lente['GROUP_DESCRICAO']}
 
     def verificar_dioptria(self, window_principal, dioptria):
         if self.grades == {}:
