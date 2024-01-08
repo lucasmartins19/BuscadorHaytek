@@ -48,8 +48,8 @@ def main():
 
     coluna_lentes_grau = [
         [sg.Frame(title="", key="teste", layout=[[sg.Push(), sg.Text(size=3), sg.Text("ESFÉRICO"), sg.Text("CILÍNDRICO"), sg.Push()],
-        [sg.Push(), sg.Text("O.D."), sg.Input(size=10, justification="c", key="ode"), sg.Input(size=10, justification="c", key="odc"), sg.Push()],
-        [sg.Push(), sg.Text("O.E."), sg.Input(size=10, justification="c", key="oee"), sg.Input(size=10, justification="c", key="oec"), sg.Push()],
+        [sg.Push(), sg.Text("O.D."), sg.Input(size=10, justification="c", key="ode", enable_events=True), sg.Input(size=10, justification="c", key="odc", enable_events=True), sg.Push()],
+        [sg.Push(), sg.Text("O.E."), sg.Input(size=10, justification="c", key="oee", enable_events=True), sg.Input(size=10, justification="c", key="oec", enable_events=True), sg.Push()],
         [sg.Push(), sg.Button("Buscar", key="buscar", disabled=True), sg.Push()]])]
         ]
     
@@ -146,9 +146,18 @@ def main():
             window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         elif event == "buscar":
+            dioptria = dict(); erros=list()
             window_principal['tabela_lentes'].update(values=[])
             window_principal.refresh()
-            threading.Thread(target=lambda: usuario.verificar_dioptria({"O.D.": {"esf": float(values['ode']), "cil": float(values['odc'])}, "O.E.": {"esf": float(values['oee']), "cil": float(values['oec'])}}), daemon=True).start()
+            # if 
+            # if (values['ode'], values['odc']) != ("", ""):
+            #     dioptria['O.D.'] = {"esf": }
+
+            # if (values['oee'], values['oec']) != ("", ""):
+            #     pass
+        elif (event in ("ode", "odc", "oee", "oec") and len(values[event])) and values[event][-1] not in ('0123456789-.'):
+            window_principal[event].update("")
+            # threading.Thread(target=lambda: usuario.verificar_dioptria({"O.D.": {"esf": float(values['ode']), "cil": float(values['odc'])}, "O.E.": {"esf": float(values['oee']), "cil": float(values['oec'])}}), daemon=True).start()
 
         elif event == "dados_lentes":
             window_principal['tabela_lentes'].update(values=sorted([[usuario.lista_lentes[lente]['order'], usuario.lista_lentes[lente]['nome_lente'], " ".join([disp for disp in disponibilidade])] for lente, disponibilidade in values['dados_lentes'].items()], key=lambda l: l[0]))
@@ -275,7 +284,7 @@ class Usuario:
 if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, '')
     # dados_login = login.iniciar_login()
-    dados_login = {"TOKEN": "A2QA8FLHLJRS6LARJ3NIYIWUDRAVS0EF", "ID": "24342"}
+    dados_login = {"TOKEN": "MR0PZWOOCZZPJFOGTAVNXO7J8PHE4ZNV", "ID": "24342"}
     if dados_login is not None:
         usuario = Usuario(dados_login)
         main() 
