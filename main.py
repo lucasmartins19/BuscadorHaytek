@@ -50,7 +50,8 @@ def main():
         [sg.Frame(title="", key="teste", layout=[[sg.Push(), sg.Text(size=3), sg.Text("ESFÉRICO"), sg.Text("CILÍNDRICO"), sg.Push()],
         [sg.Push(), sg.Text("O.D."), sg.Input(size=10, justification="c", key="ode", enable_events=True), sg.Input(size=10, justification="c", key="odc", enable_events=True), sg.Push()],
         [sg.Push(), sg.Text("O.E."), sg.Input(size=10, justification="c", key="oee", enable_events=True), sg.Input(size=10, justification="c", key="oec", enable_events=True), sg.Push()],
-        [sg.Push(), sg.Button("Buscar", key="buscar", disabled=True), sg.Push()]])]
+        [sg.Push(), sg.Button("Buscar", key="buscar", disabled=True), sg.Push()]])],
+        [sg.Text("", visible=False, key="erro_lentes", text_color="red")]
         ]
     
     coluna_lentes_resultados = [
@@ -147,16 +148,14 @@ def main():
 
         elif event == "buscar":
             dioptria = dict(); erros=list()
+            window_principal['erro_lentes'].update(visible=False)
             window_principal['tabela_lentes'].update(values=[])
-            window_principal.refresh()
-            # if 
-            # if (values['ode'], values['odc']) != ("", ""):
-            #     dioptria['O.D.'] = {"esf": }
+            if float(values['ode']) % 0.25 != 0 or float(values['odc']) % 0.25 != 0 or float(values['oee']) % 0.25 != 0 or float(values['oec']) % 0.25 != 0:
+                window_principal['erro_lentes'].update(visible=True, value="A dioptria precisa ser um múltiplo de 0.25!")
 
-            # if (values['oee'], values['oec']) != ("", ""):
-            #     pass
+
         elif (event in ("ode", "odc", "oee", "oec") and len(values[event])) and values[event][-1] not in ('0123456789-.'):
-            window_principal[event].update("")
+            window_principal[event].update(values[event][:-1])
             # threading.Thread(target=lambda: usuario.verificar_dioptria({"O.D.": {"esf": float(values['ode']), "cil": float(values['odc'])}, "O.E.": {"esf": float(values['oee']), "cil": float(values['oec'])}}), daemon=True).start()
 
         elif event == "dados_lentes":
@@ -231,7 +230,7 @@ class Usuario:
         try:
             json = {
                 "id_ini": 0,
-                "id_qtd": 10,
+                "id_qtd": 0,
                 "status": "T",
                 "data_ini": "19000101",
                 "data_fim": "21000101",
