@@ -8,6 +8,15 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
 def main():
+    def validar_input(esf, cil):
+        try:
+            if float(esf) % 0.25 != 0 or float(cil) % 0.25 != 0:
+                return False
+            else:
+                return float(esf), float(cil)
+        except:
+            return False
+    
     def mover_elemento(elemento, direcao):
         if elemento == "gif":
             if direcao == "dentro":
@@ -147,16 +156,26 @@ def main():
             window_principal['download_dados'].update(text="Erro. Tentar novamente?")
 
         elif event == "buscar":
-            dioptria = dict(); erros=list()
+            dioptria = dict(); erros = list()
             window_principal['erro_lentes'].update(visible=False)
             window_principal['tabela_lentes'].update(values=[])
-            if float(values['ode']) % 0.25 != 0 or float(values['odc']) % 0.25 != 0 or float(values['oee']) % 0.25 != 0 or float(values['oec']) % 0.25 != 0:
-                window_principal['erro_lentes'].update(visible=True, value="A dioptria precisa ser um múltiplo de 0.25!")
+            od = validar_input(values['ode'], values['odc'])
+            oe = validar_input(values['oee'], values['oec'])
+            if od is not False:
+                dioptria['O.D.'] = {}
+                dioptria['O.D.']['esf'] = od[0]
+                dioptria['O.D.']['cil'] = od[1]
+            else:
+                erros.append("Existe um problema na dioptria do olho direito.")
+            if oe is not False:
+                dioptria['O.E.'] = {}
+                dioptria['O.E.']['esf'] = oe[0]
+                dioptria['O.E.']['cil'] = oe[1]
 
+            threading.Thread(target=lambda: usuario.verificar_dioptria(dioptria), daemon=True).start()
 
         elif (event in ("ode", "odc", "oee", "oec") and len(values[event])) and values[event][-1] not in ('0123456789-.'):
             window_principal[event].update(values[event][:-1])
-            # threading.Thread(target=lambda: usuario.verificar_dioptria({"O.D.": {"esf": float(values['ode']), "cil": float(values['odc'])}, "O.E.": {"esf": float(values['oee']), "cil": float(values['oec'])}}), daemon=True).start()
 
         elif event == "dados_lentes":
             window_principal['tabela_lentes'].update(values=sorted([[usuario.lista_lentes[lente]['order'], usuario.lista_lentes[lente]['nome_lente'], " ".join([disp for disp in disponibilidade])] for lente, disponibilidade in values['dados_lentes'].items()], key=lambda l: l[0]))
@@ -283,7 +302,7 @@ class Usuario:
 if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, '')
     # dados_login = login.iniciar_login()
-    dados_login = {"TOKEN": "MR0PZWOOCZZPJFOGTAVNXO7J8PHE4ZNV", "ID": "24342"}
+    dados_login = {"TOKEN": "M6PONUQGTQY8CJMRF6YHHKRNF90ZQZ3X", "ID": "24342"}
     if dados_login is not None:
         usuario = Usuario(dados_login)
         main() 
