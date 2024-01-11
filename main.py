@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 def main():
     def validar_input(esf, cil):
         try:
-            if float(esf) % 0.25 != 0 or float(cil) % 0.25 != 0:
+            if float(esf) % 0.25 != 0 or float(cil) % 0.25 != 0 or float(cil) > 0:
                 return False
             else:
                 return float(esf), float(cil)
@@ -59,12 +59,12 @@ def main():
         [sg.Frame(title="", key="teste", layout=[[sg.Push(), sg.Text(size=3), sg.Text("ESFÉRICO"), sg.Text("CILÍNDRICO"), sg.Push()],
         [sg.Push(), sg.Text("O.D."), sg.Input(size=10, justification="c", key="ode", enable_events=True), sg.Input(size=10, justification="c", key="odc", enable_events=True), sg.Push()],
         [sg.Push(), sg.Text("O.E."), sg.Input(size=10, justification="c", key="oee", enable_events=True), sg.Input(size=10, justification="c", key="oec", enable_events=True), sg.Push()],
-        [sg.Push(), sg.Button("Buscar", key="buscar", disabled=True), sg.Push()]])],
-        [sg.Text("", visible=False, key="erro_lentes", text_color="red")]
+        [sg.Push(), sg.Button("Buscar", key="buscar", disabled=True), sg.Button("Limpar"), sg.Push()]])],
+        [sg.Push(), sg.pin(sg.Text("", key="erro_lentes", text_color="red")), sg.Push()]
         ]
     
     coluna_lentes_resultados = [
-        [sg.Table(values=[], headings=["Order", "Lente", "Disponibilidade"], visible_column_map=[False, True, True], auto_size_columns=False, key="tabela_lentes", num_rows=15, cols_justification=["c", 'l', 'r'], col_widths=[0,45,10])]
+        [sg.Table(values=[], select_mode="none", headings=["Order", "Lente", "Disponibilidade"], visible_column_map=[False, True, True], auto_size_columns=False, key="tabela_lentes", num_rows=15, cols_justification=["c", 'l', 'r'], col_widths=[0,45,10])]
         ]
 
     coluna_carregando = [
@@ -157,7 +157,7 @@ def main():
 
         elif event == "buscar":
             dioptria = dict(); erros = list()
-            window_principal['erro_lentes'].update(visible=False)
+            window_principal['erro_lentes'].update("")
             window_principal['tabela_lentes'].update(values=[])
             od = validar_input(values['ode'], values['odc'])
             oe = validar_input(values['oee'], values['oec'])
@@ -166,13 +166,23 @@ def main():
                 dioptria['O.D.']['esf'] = od[0]
                 dioptria['O.D.']['cil'] = od[1]
             else:
-                erros.append("Existe um problema na dioptria do olho direito.")
+                erros.append("O.D. preenchido incorretamente")
             if oe is not False:
                 dioptria['O.E.'] = {}
                 dioptria['O.E.']['esf'] = oe[0]
                 dioptria['O.E.']['cil'] = oe[1]
+            else:
+                erros.append("O.E. preenchido incorretamente")
+            if erros:
+                window_principal['erro_lentes'].update("\n".join(erros))
 
             threading.Thread(target=lambda: usuario.verificar_dioptria(dioptria), daemon=True).start()
+
+        elif event == "Limpar":
+            [window_principal[elemento].update("") for elemento in ['ode', 'odc', 'oee', 'oec']]
+            window_principal['ode'].set_focus()
+            window_principal['erro_lentes'].update("")
+            window_principal['tabela_lentes'].update(values=[])
 
         elif (event in ("ode", "odc", "oee", "oec") and len(values[event])) and values[event][-1] not in ('0123456789-.'):
             window_principal[event].update(values[event][:-1])
@@ -258,8 +268,7 @@ class Usuario:
             pedidos = requests.post(f"https://api.haytek.com.br/v1.1/orders/history/v2/{self.codigo_empresa}", headers=self.headers, json=json).json()['RESULT']
             return {pedido['Pedhtk']: datetime.strptime(pedido['Data_pedido'], '%Y-%m-%d').strftime('%d/%m/%Y') for pedido in pedidos}
         
-        except Exception as excecao:
-            print(excecao.__class__, excecao)
+        except:
             return None
         
     def pegar_lentes(self):
@@ -302,7 +311,7 @@ class Usuario:
 if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, '')
     # dados_login = login.iniciar_login()
-    dados_login = {"TOKEN": "M6PONUQGTQY8CJMRF6YHHKRNF90ZQZ3X", "ID": "24342"}
+    dados_login = {"TOKEN": "HIPKRMQPD1PVGVDP0UMZF1CBQSYSHCGM", "ID": "24342"}
     if dados_login is not None:
         usuario = Usuario(dados_login)
         main() 
