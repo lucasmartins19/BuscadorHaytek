@@ -1,7 +1,6 @@
 import login
 import requests
 import PySimpleGUI as sg
-from concurrent.futures import ThreadPoolExecutor
 import threading
 import locale
 from datetime import datetime
@@ -95,9 +94,6 @@ def main():
     window_principal['campo_pesquisa'].bind("<Return>", "-enter")
     while True:
         event, values = window_principal.read(timeout=100)
-        # if event != "__TIMEOUT__":
-        #     print(event, values)
-        
         if event == sg.WINDOW_CLOSED:
             break
         elif event == "empresa":
@@ -310,8 +306,7 @@ class Usuario:
 
 if __name__ == "__main__":
     locale.setlocale(locale.LC_ALL, '')
-    # dados_login = login.iniciar_login()
-    dados_login = {"TOKEN": "HIPKRMQPD1PVGVDP0UMZF1CBQSYSHCGM", "ID": "24342"}
+    dados_login = login.iniciar_login()
     if dados_login is not None:
         usuario = Usuario(dados_login)
         main() 
